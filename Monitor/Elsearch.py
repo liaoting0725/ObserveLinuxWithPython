@@ -10,6 +10,9 @@ import subprocess
 
 first_time = True
 
+global manager
+manager = CfgManager('Elsearch.cfg')
+
 def requestRun(http):
     def removeBlank(s):
         return s and s.strip()
@@ -31,7 +34,7 @@ def requestRun(http):
         status = False
     return status
 
-def notice(error_string=None, manager=None, error=False):
+def notice(error_string=None, error=False):
     email_to_addr = manager.getValue(sectionHeader='setup', key='emailto')
     sms_to_addr = manager.getValue(sectionHeader='setup', key='smsto')
     subject_name = 'elsearch监测'
@@ -48,12 +51,11 @@ def notice(error_string=None, manager=None, error=False):
         SmsAlidayu.sendSMS(to_phone=sms_to_addr, product_name=subject_name, error=False)
 
 def action():
-    manager = CfgManager('Elsearch.cfg')
     net = manager.getValue(sectionHeader='setup', key='net')
     if isinstance(net, str):
         netList = list(eval(net))
     if len(netList) < 1:
-        notice(error_string='需输入网址',manager=manager, error=True)
+        notice(error_string='需输入网址', error=True)
         return
     status = processRun(netList[0])
     if status == '200':
@@ -67,8 +69,7 @@ def action():
     curTime = manager.getIntValue(sectionHeader='setup', key='curtime')
     if result:
         if first_time:
-            #notice(manager=manager, error=False)
-            print 'reset'
+            notice(error=False)
         if curTime == 0:
             print 'status ok'
             pass
@@ -80,8 +81,7 @@ def action():
         maxTime = manager.getIntValue(sectionHeader='setup', key='maxtime')
         if curTime >= maxTime:
             curTime = 0
-            print 'send notice'
-            #notice(manager=manager, error=True)
+            notice(error=True)
         else:
             pass
         manager.setValue(sectionHeader='setup', key='curtime', value=curTime)
@@ -93,11 +93,10 @@ def processRun(net):
     c = result.stdout.readline()
     return c
 
-def reset(manager=None):
+def reset():
     manager.setValue(sectionHeader='setup', key='curtime', value=0)
 
 if __name__ == '__main__':
-    manager = CfgManager('Elsearch.cfg')
-    reset(manager=manager)
+    reset()
     time = manager.getIntValue(sectionHeader='setup', key='time')
     Schedu.task(action, second=time)

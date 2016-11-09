@@ -10,6 +10,9 @@ import SmsAlidayu
 
 first_time = True
 
+global manager
+manager = CfgManager('Redis.cfg')
+
 class RedisObserve:
     def __init__(self, host=None, port=None, password=None):
         self.host = host
@@ -23,7 +26,6 @@ class RedisObserve:
 
 
 def redisStatus():
-    manager = CfgManager('Redis.cfg')
     host = manager.getValue(sectionHeader='setup', key='host')
     port = manager.getIntValue(sectionHeader='setup', key='port')
     password = manager.getValue(sectionHeader='setup', key='password')
@@ -76,12 +78,11 @@ def notice(error_string=None, manager=None, error=False):
         Email.sendMail(subject=subject_name, to_addr=email_to_addr, content=email_content)
         SmsAlidayu.sendSMS(to_phone=sms_to_addr, product_name=subject_name, error=False)
 
-def reset(manager=None):
+def reset():
     manager.setValue(sectionHeader='setup', key='curtime', value=0)
 
 if __name__ == '__main__':
-    parse = CfgManager('Redis.cfg')
-    reset(manager=parse)
-    interval = parse.getIntValue(sectionHeader='setup', key='time')
+    reset()
+    interval = manager.getIntValue(sectionHeader='setup', key='time')
     Schedu.task(redisStatus, interval)
 

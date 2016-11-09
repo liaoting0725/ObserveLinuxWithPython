@@ -13,9 +13,9 @@ def processkill():
     print system
     pids = []
     status = False
-    if system == 'Darwin':# osx system
+    if system == 'Darwin':
         pids = os.popen('ps -ef|grep python|grep -v grep|cut -c 8-13').readlines()
-    else: #include linux
+    else:
         pids = os.popen('ps -ef|grep python|grep -v grep|cut -c 9-15').readlines()
     print pids
     if len(pids) < 1:

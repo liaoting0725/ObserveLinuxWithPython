@@ -4,9 +4,11 @@
 import os
 from CfgManager import *
 
+global manager
+manager = CfgManager('Start.cfg')
+
 def func():
     taskNameList = []
-    manager = CfgManager('Start.cfg')
     value = manager.getValue('task', 'filename')
     if isinstance(value, str):
         taskNameList = list(eval(value))
@@ -18,6 +20,4 @@ def func():
             os.system(cmd)
 
 if __name__ == '__main__':
-    #SmsAlidayu.sendSMS(to_phone='15158807232', product_name='测试', error=True, message='测试测试测试测试')
     func()
-    # Email.sendMail(subject='email test', to_addr=['576809655@qq.com', 'liaoting0725@hotmail.com'], content='test test test')

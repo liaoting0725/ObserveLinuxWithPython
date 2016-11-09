@@ -6,20 +6,23 @@ import Email
 import SmsAlidayu
 import MySQLdb
 
+global manager
+manager = CfgManager('MySQL.cfg')
+
 class myThread (threading.Thread):
-    def __init__(self, name, manager):
+    def __init__(self, name):
         threading.Thread.__init__(self)
         self.name = name
-        self.manager = manager
+
     def run(self):
         threadLock.acquire()
-        errorstring = monitor_mysql(name=self.name, manager=self.manager)
-        resultAction(name=self.name, errorstring=errorstring, manager=self.manager)
+        errorstring = monitor_mysql(name=self.name)
+        resultAction(name=self.name, errorstring=errorstring)
         threadLock.release()
 
 threadLock = threading.Lock()
 
-def monitor_mysql(name=None, manager=None):
+def monitor_mysql(name=None):
     host = manager.getValue(sectionHeader=name, key='host')
     port = manager.getIntValue(sectionHeader=name, key='port')
     user = manager.getValue(sectionHeader=name, key='user')
@@ -46,14 +49,15 @@ def monitor_mysql(name=None, manager=None):
     except Exception as e:
         print(e)
         warning = '数据库访问出错'
+        del e
     return warning
 
-def resultAction(name,errorstring,manager):
+def resultAction(name, errorstring):
     curTime = manager.getIntValue(sectionHeader=name, key='curtime')
     first_time = manager.getBoolValue(sectionHeader=name, key='first_time')
     if errorstring == '':
         if first_time:
-            notice(name, manager=manager, error=False)
+            notice(name, error=False)
         if curTime == 0:
             pass
         else:
@@ -63,7 +67,7 @@ def resultAction(name,errorstring,manager):
         maxTime = manager.getIntValue(sectionHeader=name, key='maxtime')
         if curTime >= maxTime:
             curTime = 0
-            notice(name=name, manager=manager, error=True, errorstring=errorstring)
+            notice(name=name, error=True, errorstring=errorstring)
         else:
             pass
         manager.setValue(sectionHeader=name, key='curtime', value=curTime)
@@ -71,7 +75,7 @@ def resultAction(name,errorstring,manager):
         manager.setValue(sectionHeader=name, key='first_time', value=False)
 
 
-def notice(name=None, manager=None, error=False, errorstring=None):
+def notice(name=None, error=False, errorstring=None):
     email_to_addr = manager.getValue(sectionHeader=name, key='emailto')
     sms_to_addr = manager.getValue(sectionHeader=name, key='smsto')
     subject_name = 'MySQL主从检测'
@@ -89,17 +93,16 @@ def notice(name=None, manager=None, error=False, errorstring=None):
         SmsAlidayu.sendSMS(to_phone=sms_to_addr, product_name=subject_name, error=False)
 
 def action():
-    manager = CfgManager('MySQL.cfg')
     apps = manager.getSections()
     appsNum = len(apps)
     if appsNum:
         for i in xrange(1, appsNum):
             section = apps[i]
-            thread = myThread(name=section, manager=manager)
+            thread = myThread(name=section)
             thread.setDaemon(True)
             thread.start()
 
-def reset(manager=None):
+def reset():
     apps = manager.getSections()
     appsNum = len(apps)
     if appsNum:
@@ -109,7 +112,6 @@ def reset(manager=None):
             manager.setValue(sectionHeader=section, key='first_time', value=True)
 
 if __name__ == '__main__':
-    manager = CfgManager('MySQL.cfg')
-    reset(manager=manager)
+    reset()
     time = manager.getIntValue(sectionHeader='setup', key='time')
     Schedu.task(action, second=time)

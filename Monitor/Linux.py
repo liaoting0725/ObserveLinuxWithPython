@@ -8,6 +8,9 @@ import SmsAlidayu
 
 first_time = True
 
+global manager
+manager = CfgManager('Linux.cfg')
+
 def cpuUsage():
     try:
         f = open('/proc/stat')
@@ -61,28 +64,33 @@ def memUsage():
         print '错误原因:' + str(e)
         return 0
 
-def diskInfo(path):
-    """Return disk usage associated with path."""
-    st = os.statvfs(path)
-    free = (st.f_bavail * st.f_frsize)
-    total = (st.f_blocks * st.f_frsize)
-    used = (st.f_blocks - st.f_bfree) * st.f_frsize
-    try:
-        percent = (float(used) / total) * 100
-    except ZeroDivisionError:
-        percent = 100
-    return percent
+def diskInfo():
+    global manager
+    diskStnd = manager.getIntValue(sectionHeader='setup', key='disk')
+    lines = os.popen('df -lh').readlines()
+    length = len(lines)
+    errorstring = ''
+    if length > 1:
+        for i in range(1, length):
+            mes = lines[i]
+            meslist = mes.split()
+            submes = meslist[4]
+            num = float(submes[:-1])
+            print num
+            if num > diskStnd:
+                errorstring = '磁盘占用过多'
+                break
+    return errorstring
 
 def allInfo():
-    error_string = ''
     error = False
-    manager = CfgManager('Linux.cfg')
-    diskStnd = manager.getIntValue(sectionHeader='setup', key='disk')
+    global manager
     cpuStnd = manager.getIntValue(sectionHeader='setup', key='cpu')
     memStnd = manager.getIntValue(sectionHeader='setup', key='mem')
-    if diskInfo('/') > diskStnd:
+    error_string = diskInfo()
+    if len(error_string):
         error = True
-        error_string = '磁盘占用过多,'
+    print error_string
     mem = memUsage()
     if mem > memStnd or mem == 0:
         error = True
@@ -98,17 +106,17 @@ def allInfo():
         maxTime = manager.getIntValue(sectionHeader='setup', key='maxtime')
         if curTime >= maxTime:
             curTime = 0
-            notice(error_string=error_string, manager=manager, error=True)
+            notice(error_string=error_string, error=True)
         else:
             pass
         manager.setValue(sectionHeader='setup', key='curtime', value=curTime)
     else:
         if first_time:
-            notice(manager=manager, error=False)
+            notice(error=False)
         manager.setValue(sectionHeader='setup', key='curtime', value=0)
     first_time = False
 
-def notice(error_string=None, manager=None, error=False):
+def notice(error_string=None, error=False):
     email_to_addr = manager.getValue(sectionHeader='setup', key='emailto')
     sms_to_addr = manager.getValue(sectionHeader='setup', key='smsto')
     subject_name = 'linux系统检测'
@@ -121,11 +129,10 @@ def notice(error_string=None, manager=None, error=False):
         Email.sendMail(subject=subject_name, to_addr=email_to_addr, content=email_content)
         SmsAlidayu.sendSMS(to_phone=sms_to_addr, product_name=subject_name, error=False)
 
-def reset(manager=None):
+def reset():
     manager.setValue(sectionHeader='setup', key='curtime', value=0)
 
 if __name__ == '__main__':
-    manager = CfgManager('Linux.cfg')
-    reset(manager=manager)
+    reset()
     time = manager.getIntValue(sectionHeader='setup', key='time')
     Schedu.task(allInfo, second=time)
